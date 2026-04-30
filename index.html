@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GymScript Compiler</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ══════════════════════════════════════════════════════
+       HEADER
+  ══════════════════════════════════════════════════════ -->
+  <header class="header">
+    <div>
+      <h1>GYMSCRIPT COMPILER</h1>
+      <p class="subtitle">Mini-Compilador · Temática GYM · Universidad Mariano Gálvez de Guatemala 2026</p>
+    </div>
+    <div class="version">v1.0<br>JavaScript</div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════
+       TABS
+  ══════════════════════════════════════════════════════ -->
+  <nav class="tabs">
+    <button class="tab active"  data-tab="editor"    onclick="showTabByName('editor')">EDITOR &amp; COMPILAR</button>
+    <button class="tab"         data-tab="reference" onclick="showTabByName('reference')">REFERENCIA</button>
+    <button class="tab"         data-tab="bnf"       onclick="showTabByName('bnf')">BNF / GRAMÁTICA</button>
+    <button class="tab"         data-tab="regex"     onclick="showTabByName('regex')">EXPRESIONES REGULARES</button>
+    <button class="tab"         data-tab="samples"   onclick="showTabByName('samples')">EJEMPLOS</button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════
+       PANEL: EDITOR
+  ══════════════════════════════════════════════════════ -->
+  <section class="panel active" id="panel-editor">
+
+    <div class="controls">
+      <button class="btn"           onclick="compile()">COMPILAR</button>
+      <button class="btn btn-secondary" onclick="clearAll()">LIMPIAR</button>
+      <button class="btn btn-secondary" onclick="saveFile()">💾 GUARDAR</button>
+      <button class="btn btn-secondary" onclick="openFile()">📂 ABRIR</button>
+      <input type="file" id="file-input" accept=".gym,.txt" style="display:none" onchange="handleFileOpen(event)">
+      <button class="sample-btn"   onclick="loadSample(0)">Ejemplo válido 1</button>
+      <button class="sample-btn"   onclick="loadSample(1)">Ejemplo válido 2</button>
+      <button class="sample-btn"   onclick="loadSample(2)">Con error léxico</button>
+      <button class="sample-btn"   onclick="loadSample(3)">Con error sintáctico</button>
+      <button class="sample-btn"   onclick="loadSample(4)">Programa completo</button>
+    </div>
+
+    <!-- Editor + Árbol sintáctico -->
+    <div class="editor-area">
+      <div class="editor-box">
+        <div class="editor-label">
+          CÓDIGO GYMSCRIPT
+          <span>Ctrl+Enter para compilar</span>
+        </div>
+        <textarea id="code-input" placeholder="// Escribe tu programa GymScript aquí...
+// Ejemplo:
+rutina Principal {
+  reps x = 10;
+  peso y = 75.5;
+  levantar(x);
+}"></textarea>
+      </div>
+
+      <div class="editor-box">
+        <div class="editor-label">ÁRBOL SINTÁCTICO</div>
+        <div class="result-content" id="tree-output">
+          <span class="empty-msg">El árbol aparecerá aquí tras compilar...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tokens + Errores -->
+    <div class="results-area">
+      <div class="result-box">
+        <div class="editor-label">TABLA DE TOKENS</div>
+        <div class="result-content" id="tokens-output">
+          <span class="empty-msg">Los tokens aparecerán aquí...</span>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <div class="editor-label">TABLA DE ERRORES</div>
+        <div class="result-content" id="errors-output">
+          <span class="empty-msg">Sin errores detectados.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de símbolos -->
+    <div class="results-area full">
+      <div class="result-box">
+        <div class="editor-label">TABLA DE SÍMBOLOS</div>
+        <div class="result-content" id="symbols-output">
+          <span class="empty-msg">Los símbolos declarados aparecerán aquí...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barra de estado -->
+    <div class="status-bar">
+      <span>Estado: <span id="status-txt">Esperando código...</span></span>
+      <span>Tokens: <span id="tok-count">0</span></span>
+      <span>Errores léxicos: <span id="lex-count">0</span></span>
+      <span>Errores sintácticos: <span id="syn-count">0</span></span>
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════
+       PANEL: REFERENCIA DEL LENGUAJE
+  ══════════════════════════════════════════════════════ -->
+  <section class="panel" id="panel-reference">
+    <div class="ref-grid">
+
+      <div class="ref-card">
+        <p class="ref-title">PALABRAS RESERVADAS (15)</p>
+        <div class="kw-list">
+          <span class="kw">rutina <span>= función/bloque</span></span>
+          <span class="kw">reps <span>= entero</span></span>
+          <span class="kw">peso <span>= decimal</span></span>
+          <span class="kw">serie <span>= string</span></span>
+          <span class="kw">descanso <span>= booleano</span></span>
+          <span class="kw">levantar <span>= imprimir</span></span>
+          <span class="kw">si_cumplo <span>= if</span></span>
+          <span class="kw">sino <span>= else</span></span>
+          <span class="kw">mientras_pueda <span>= while</span></span>
+          <span class="kw">para_cada <span>= for</span></span>
+          <span class="kw">retornar <span>= return</span></span>
+          <span class="kw">verdad <span>= true</span></span>
+          <span class="kw">falso <span>= false</span></span>
+          <span class="kw">nulo <span>= null</span></span>
+          <span class="kw">marca <span>= break</span></span>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <p class="ref-title">OPERADORES Y SÍMBOLOS</p>
+        <div class="kw-list">
+          <span class="kw">+ - * /</span>
+          <span class="kw">= (asignación)</span>
+          <span class="kw">== != &lt; &gt; &lt;= &gt;=</span>
+          <span class="kw">&amp;&amp; || !</span>
+          <span class="kw">; (fin instrucción)</span>
+          <span class="kw">{ } (bloque)</span>
+          <span class="kw">( ) (agrupación)</span>
+          <span class="kw">// (comentario)</span>
+          <span class="kw">" " (cadena)</span>
+          <span class="kw">, (separador)</span>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <p class="ref-title">ESTRUCTURA DE UN PROGRAMA</p>
+        <pre class="struct-code">rutina NombreRutina {
+  reps variable = valor;
+  peso decimal  = valor;
+  serie texto   = "algo";
+  descanso flag = verdad;
+
+  si_cumplo (condición) {
+    levantar(variable);
+  } sino {
+    levantar("otro");
+  }
+
+  mientras_pueda (condición) {
+    // instrucciones
+  }
+
+  retornar resultado;
+}</pre>
+      </div>
+
+      <div class="ref-card">
+        <p class="ref-title">REGLAS DE ESCRITURA</p>
+        <div class="rules-list">
+          • Sensible a mayúsculas/minúsculas<br>
+          • Identificadores: letra/_ + letras/dígitos/_<br>
+          • Toda instrucción termina en <span class="hl">;</span><br>
+          • Bloques delimitados con <span class="hl">{ }</span><br>
+          • Cadenas con comillas dobles <span class="hl">"..."</span><br>
+          • Comentarios con <span class="hl">//</span><br>
+          • Indentación recomendada: 2 espacios<br>
+          • Nombres de rutina: empiezan con mayúscula
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════
+       PANEL: BNF / GRAMÁTICA
+  ══════════════════════════════════════════════════════ -->
+  <section class="panel" id="panel-bnf">
+    <div class="ref-card" style="max-width:100%">
+      <p class="ref-title">BNF / EBNF DEL LENGUAJE GYMSCRIPT</p>
+      <div class="bnf-code">
+        <span class="bnf-rule">&lt;programa&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">{ &lt;rutina&gt; }</span><br>
+
+        <span class="bnf-rule">&lt;rutina&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">"rutina"</span>
+        <span class="bnf-rule"> &lt;IDENTIFICADOR&gt; </span>
+        <span class="bnf-terminal">"{"</span>
+        <span class="bnf-rule"> &lt;instrucciones&gt; </span>
+        <span class="bnf-terminal">"}"</span><br>
+
+        <span class="bnf-rule">&lt;instrucciones&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">{ &lt;instruccion&gt; }</span><br>
+
+        <span class="bnf-rule">&lt;instruccion&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-rule">&lt;declaracion&gt;</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-rule">&lt;asignacion&gt;</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-rule">&lt;imprimir&gt;</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-rule">&lt;condicional&gt;</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-rule">&lt;bucle_while&gt;</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-rule">&lt;retorno&gt;</span><br><br>
+
+        <span class="bnf-rule">&lt;declaracion&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-rule">&lt;tipo&gt; &lt;IDENTIFICADOR&gt;</span>
+        <span class="bnf-terminal"> "=" </span>
+        <span class="bnf-rule">&lt;expresion&gt;</span>
+        <span class="bnf-terminal"> ";"</span><br>
+
+        <span class="bnf-rule">&lt;tipo&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">"reps" | "peso" | "serie" | "descanso"</span><br>
+
+        <span class="bnf-rule">&lt;asignacion&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-rule">&lt;IDENTIFICADOR&gt;</span>
+        <span class="bnf-terminal"> "=" </span>
+        <span class="bnf-rule">&lt;expresion&gt;</span>
+        <span class="bnf-terminal"> ";"</span><br>
+
+        <span class="bnf-rule">&lt;imprimir&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">"levantar" "(" </span>
+        <span class="bnf-rule">&lt;expresion&gt;</span>
+        <span class="bnf-terminal"> ")" ";"</span><br>
+
+        <span class="bnf-rule">&lt;condicional&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">"si_cumplo" "(" </span>
+        <span class="bnf-rule">&lt;expresion&gt;</span>
+        <span class="bnf-terminal"> ")" "{" </span>
+        <span class="bnf-rule">&lt;instrucciones&gt;</span>
+        <span class="bnf-terminal"> "}" [ "sino" "{" </span>
+        <span class="bnf-rule">&lt;instrucciones&gt;</span>
+        <span class="bnf-terminal"> "}" ]</span><br>
+
+        <span class="bnf-rule">&lt;bucle_while&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">"mientras_pueda" "(" </span>
+        <span class="bnf-rule">&lt;expresion&gt;</span>
+        <span class="bnf-terminal"> ")" "{" </span>
+        <span class="bnf-rule">&lt;instrucciones&gt;</span>
+        <span class="bnf-terminal"> "}"</span><br>
+
+        <span class="bnf-rule">&lt;retorno&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">"retornar" </span>
+        <span class="bnf-rule">&lt;expresion&gt;</span>
+        <span class="bnf-terminal"> ";"</span><br><br>
+
+        <span class="bnf-rule">&lt;expresion&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-rule">&lt;termino&gt;</span>
+        <span class="bnf-terminal"> { ("+" | "-" | "==" | "!=" | "&lt;" | "&gt;" | "&lt;=" | "&gt;=" | "&amp;&amp;" | "||") &lt;termino&gt; }</span><br>
+
+        <span class="bnf-rule">&lt;termino&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-rule">&lt;factor&gt;</span>
+        <span class="bnf-terminal"> { ("*" | "/") &lt;factor&gt; }</span><br>
+
+        <span class="bnf-rule">&lt;factor&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-rule">&lt;NUMERO&gt;</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-rule">&lt;DECIMAL&gt;</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-rule">&lt;CADENA&gt;</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-rule">&lt;BOOL&gt;</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-rule">&lt;IDENTIFICADOR&gt;</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-terminal">"(" </span>
+        <span class="bnf-rule">&lt;expresion&gt;</span>
+        <span class="bnf-terminal"> ")"</span>
+        <span class="bnf-op"> | </span>
+        <span class="bnf-terminal">"!" &lt;factor&gt;</span><br><br>
+
+        <span class="bnf-rule">&lt;IDENTIFICADOR&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">[a-zA-Z_][a-zA-Z0-9_]*</span><br>
+
+        <span class="bnf-rule">&lt;NUMERO&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">[0-9]+</span><br>
+
+        <span class="bnf-rule">&lt;DECIMAL&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">[0-9]+\.[0-9]+</span><br>
+
+        <span class="bnf-rule">&lt;CADENA&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">"\"" [^"]* "\""</span><br>
+
+        <span class="bnf-rule">&lt;BOOL&gt;</span>
+        <span class="bnf-op"> ::= </span>
+        <span class="bnf-terminal">"verdad" | "falso"</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════
+       PANEL: EXPRESIONES REGULARES
+  ══════════════════════════════════════════════════════ -->
+  <section class="panel" id="panel-regex">
+    <div class="ref-card" style="max-width:100%">
+      <p class="ref-title">EXPRESIONES REGULARES — GYMSCRIPT</p>
+      <table class="regex-table">
+        <thead>
+          <tr><th>Token</th><th>Expresión Regular</th><th>Ejemplo</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>IDENTIFICADOR</td><td class="regex-pattern">/^[a-zA-Z_][a-zA-Z0-9_]*/</td><td>x, _rep, series1</td></tr>
+          <tr><td>DECIMAL</td>      <td class="regex-pattern">/^[0-9]+\.[0-9]+/</td>        <td>75.5, 3.14</td></tr>
+          <tr><td>NUMERO</td>       <td class="regex-pattern">/^[0-9]+/</td>                 <td>10, 200, 0</td></tr>
+          <tr><td>CADENA</td>       <td class="regex-pattern">/^"[^"]*"/</td>                <td>"Hola gym"</td></tr>
+          <tr><td>COMENTARIO</td>   <td class="regex-pattern">/^\/\/.*/</td>                 <td>// comentario</td></tr>
+          <tr><td>IGUAL_IGUAL</td>  <td class="regex-pattern">/^==/</td>                     <td>==</td></tr>
+          <tr><td>DIFERENTE</td>    <td class="regex-pattern">/^!=/</td>                     <td>!=</td></tr>
+          <tr><td>MENOR_IGUAL</td>  <td class="regex-pattern">/^&lt;=/</td>                  <td>&lt;=</td></tr>
+          <tr><td>MAYOR_IGUAL</td>  <td class="regex-pattern">/^>=/</td>                     <td>&gt;=</td></tr>
+          <tr><td>AND</td>          <td class="regex-pattern">/^&amp;&amp;/</td>             <td>&amp;&amp;</td></tr>
+          <tr><td>OR</td>           <td class="regex-pattern">/^\|\|/</td>                   <td>||</td></tr>
+          <tr><td>OP_ARITMÉTICO</td><td class="regex-pattern">/^[+\-*\/]/</td>              <td>+ - * /</td></tr>
+          <tr><td>ASIGNACION</td>   <td class="regex-pattern">/^=/</td>                      <td>=</td></tr>
+          <tr><td>PUNTO_COMA</td>   <td class="regex-pattern">/^;/</td>                      <td>;</td></tr>
+          <tr><td>LLAVE_ABR</td>    <td class="regex-pattern">/^\{/</td>                     <td>{</td></tr>
+          <tr><td>LLAVE_CIE</td>    <td class="regex-pattern">/^\}/</td>                     <td>}</td></tr>
+          <tr><td>PAREN_ABR</td>    <td class="regex-pattern">/^\(/</td>                     <td>(</td></tr>
+          <tr><td>PAREN_CIE</td>    <td class="regex-pattern">/^\)/</td>                     <td>)</td></tr>
+          <tr><td>COMA</td>         <td class="regex-pattern">/^,/</td>                      <td>,</td></tr>
+          <tr><td>ESPACIO</td>      <td class="regex-pattern">/^\s+/</td>                    <td>(ignorado)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════
+       PANEL: EJEMPLOS
+  ══════════════════════════════════════════════════════ -->
+  <section class="panel" id="panel-samples">
+    <div class="ref-grid">
+
+      <div class="ref-card">
+        <p class="ref-title">5 PROGRAMAS VÁLIDOS</p>
+        <div class="sample-list">
+          <div class="sample-item">
+            <button class="sample-btn" onclick="loadAndSwitch(0)">Cargar en editor</button>
+            <span class="sample-desc">Declaración simple de variables</span>
+          </div>
+          <div class="sample-item">
+            <button class="sample-btn" onclick="loadAndSwitch(1)">Cargar en editor</button>
+            <span class="sample-desc">Condicional si_cumplo / sino</span>
+          </div>
+          <div class="sample-item">
+            <button class="sample-btn" onclick="loadAndSwitch(4)">Cargar en editor</button>
+            <span class="sample-desc">Programa completo integrado</span>
+          </div>
+          <div class="sample-item">
+            <button class="sample-btn" onclick="loadAndSwitch(5)">Cargar en editor</button>
+            <span class="sample-desc">Bucle mientras_pueda</span>
+          </div>
+          <div class="sample-item">
+            <button class="sample-btn" onclick="loadAndSwitch(6)">Cargar en editor</button>
+            <span class="sample-desc">Aritmética y retorno</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <p class="ref-title">5 PROGRAMAS CON ERRORES</p>
+        <div class="sample-list">
+          <div class="sample-item">
+            <button class="sample-btn" onclick="loadAndSwitch(2)">Cargar en editor</button>
+            <span class="sample-desc err">Error léxico: carácter inválido @</span>
+          </div>
+          <div class="sample-item">
+            <button class="sample-btn" onclick="loadAndSwitch(3)">Cargar en editor</button>
+            <span class="sample-desc err">Error sintáctico: falta ;</span>
+          </div>
+          <div class="sample-item">
+            <button class="sample-btn" onclick="loadAndSwitch(7)">Cargar en editor</button>
+            <span class="sample-desc err">Error: paréntesis sin cerrar</span>
+          </div>
+          <div class="sample-item">
+            <button class="sample-btn" onclick="loadAndSwitch(8)">Cargar en editor</button>
+            <span class="sample-desc err">Error: llave sin cerrar</span>
+          </div>
+          <div class="sample-item">
+            <button class="sample-btn" onclick="loadAndSwitch(9)">Cargar en editor</button>
+            <span class="sample-desc err">Error: tipo de dato no reconocido</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div><!-- /.app -->
+
+<!-- Script del compilador (separado del HTML) -->
+<script src="compiler.js"></script>
+
+</body>
+</html>
