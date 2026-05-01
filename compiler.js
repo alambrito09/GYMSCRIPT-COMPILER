@@ -607,6 +607,114 @@ function renderSymbols(symbols) {
   </table>`;
 }
 
+// ============================================================
+//  INTÉRPRETE — Ejecuta el AST y captura output de levantar()
+// ============================================================
+function interpreter(ast) {
+  const output = [];
+  const variables = {};
+  let isExecuting = true;
+
+  function evaluateExpr(expr) {
+    if (!expr) return null;
+
+    if (expr.type === 'NUMERO') return parseInt(expr.value);
+    if (expr.type === 'DECIMAL') return parseFloat(expr.value);
+    if (expr.type === 'CADENA') return expr.value.slice(1, -1); // Remover comillas
+    if (expr.type === 'BOOLEANO') return expr.value === 'verdad';
+    if (expr.type === 'NULO') return null;
+
+    if (expr.type === 'ID') {
+      return variables[expr.value] !== undefined ? variables[expr.value] : null;
+    }
+
+    if (expr.type === 'BINARIO') {
+      const left = evaluateExpr(expr.left);
+      const right = evaluateExpr(expr.right);
+      switch (expr.op) {
+        case '+': return left + right;
+        case '-': return left - right;
+        case '*': return left * right;
+        case '/': return left / right;
+        case '==': return left == right;
+        case '!=': return left != right;
+        case '<': return left < right;
+        case '>': return left > right;
+        case '<=': return left <= right;
+        case '>=': return left >= right;
+        case '&&': return left && right;
+        case '||': return left || right;
+        default: return null;
+      }
+    }
+
+    if (expr.type === 'UNARIO') {
+      if (expr.op === '!') return !evaluateExpr(expr.expr);
+    }
+
+    return null;
+  }
+
+  function executeNode(node) {
+    if (!isExecuting || !node) return;
+
+    if (node.type === 'DECLARACION') {
+      variables[node.name] = evaluateExpr(node.expr);
+    }
+
+    if (node.type === 'ASIGNACION') {
+      variables[node.name] = evaluateExpr(node.expr);
+    }
+
+    if (node.type === 'LEVANTAR') {
+      const val = evaluateExpr(node.expr);
+      output.push(String(val));
+    }
+
+    if (node.type === 'CONDICIONAL') {
+      const condition = evaluateExpr(node.cond);
+      if (condition && node.body) {
+        node.body.forEach(n => executeNode(n));
+      } else if (!condition && node.elseBody) {
+        node.elseBody.forEach(n => executeNode(n));
+      }
+    }
+
+    if (node.type === 'MIENTRAS') {
+      let watchdog = 0;
+      while (evaluateExpr(node.cond) && watchdog++ < 10000) {
+        if (node.body) {
+          node.body.forEach(n => executeNode(n));
+        }
+      }
+    }
+
+    if (node.type === 'RETORNO') {
+      isExecuting = false;
+    }
+  }
+
+  function executeProgram(node) {
+    if (node.type === 'PROGRAMA' && node.children) {
+      node.children.forEach(rutina => {
+        if (rutina.type === 'RUTINA' && rutina.children) {
+          rutina.children.forEach(n => executeNode(n));
+        }
+      });
+    }
+  }
+
+  executeProgram(ast);
+  return output;
+}
+
+function renderOutput(output) {
+  if (!output || output.length === 0) {
+    return '<div class="output-container"><span class="empty-msg">El programa no devolvió resultados.</span></div>';
+  }
+  return `<div class="output-container"><pre class="output-text">${output.map(o => escHtml(o)).join('\n')}</pre></div>`;
+}
+
 function renderTree(ast) {
   function nodeHtml(node, depth) {
     if (!node) return '';
@@ -669,6 +777,14 @@ function compile() {
   document.getElementById('symbols-output').innerHTML = renderSymbols(symbols);
   document.getElementById('tree-output').innerHTML    = renderTree(ast);
 
+  // Ejecutar el programa si no hay errores
+  if (errors.length === 0) {
+    const output = interpreter(ast);
+    document.getElementById('output-result').innerHTML = renderOutput(output);
+  } else {
+    document.getElementById('output-result').innerHTML = '<div class="output-container"><span class="error-msg">No se puede ejecutar: hay errores en la compilacion.</span></div>';
+  }
+
   const ok = errors.length === 0;
   const stEl = document.getElementById('status-txt');
   stEl.textContent  = ok ? 'OK — Compilación exitosa' : 'ERRORES detectados';
@@ -685,6 +801,7 @@ function clearAll() {
   document.getElementById('errors-output').innerHTML  = '<span class="empty-msg">Sin errores detectados.</span>';
   document.getElementById('tree-output').innerHTML    = '<span class="empty-msg">El árbol aparecerá aquí tras compilar...</span>';
   document.getElementById('symbols-output').innerHTML = '<span class="empty-msg">Los símbolos declarados aparecerán aquí...</span>';
+  document.getElementById('output-result').innerHTML  = '<span class="empty-msg">El resultado aparecerá aquí tras compilar...</span>';
   document.getElementById('status-txt').textContent   = 'Esperando código...';
   document.getElementById('status-txt').className     = '';
   document.getElementById('tok-count').textContent    = '0';

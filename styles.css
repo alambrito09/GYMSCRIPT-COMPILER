@@ -721,6 +721,33 @@ textarea#code-input::placeholder {
   font-weight: 700;
 }
 
+/* ─── Output del programa ──────────────────────────────────────────── */
+.output-container {
+  width: 100%;
+  height: 100%;
+}
+
+.output-text {
+  background: rgba(15, 15, 25, 0.8);
+  color: #6ef391;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow: auto;
+  max-height: 300px;
+  border-left: 4px solid #6ef391;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.error-msg {
+  color: #ff8080;
+  font-weight: 600;
+}
+
 /* ─── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 700px) {
   .editor-area,
